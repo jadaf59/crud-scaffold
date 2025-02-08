@@ -1,0 +1,84 @@
+import { z } from "zod"
+
+const {{lowercase entity.name}}Schema = z.object({
+  {{#each entity.fields}}
+  {{#if (eq type "string")}}
+  {{name}}: z.string(),
+  {{/if}}
+  {{#if (eq type "number")}}
+  {{name}}: z.number(),
+  {{/if}}
+  {{#if (eq type "boolean")}}
+  {{name}}: z.boolean(),
+  {{/if}}
+  {{#if (eq type "Date")}}
+  {{name}}: z.date(),
+  {{/if}}
+  {{#if isEnum}}
+  {{name}}: z.enum([{{#each ../entity.enums}}{{#if (eq name ../name)}}{{#each values}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}{{/if}}{{/each}}]),
+  {{/if}}
+  {{/each}}
+})
+
+export const create{{entity.name}}Schema = {{lowercase entity.name}}Schema
+export const update{{entity.name}}Schema = create{{entity.name}}Schema.partial()
+
+export type Create{{entity.name}} = z.infer<typeof create{{entity.name}}Schema>
+export type Update{{entity.name}} = z.infer<typeof update{{entity.name}}Schema>
+
+// Custom validation messages
+export const {{uppercase entity.name}}_VALIDATION_MESSAGES = {
+  {{#each entity.fields}}
+  {{#unless (eq name "id")}}
+  {{#unless (eq name "createdAt")}}
+  {{name}}: {
+    {{#if (eq type "string")}}
+    required: "{{pascalCase name}} is required",
+    min: "{{pascalCase name}} must be at least 1 character",
+    max: "{{pascalCase name}} must be less than 255 characters",
+    {{else if isEnum}}
+    required: "{{pascalCase name}} is required",
+    invalid: "{{pascalCase name}} must be a valid option",
+    {{else if (eq type "number")}}
+    required: "{{pascalCase name}} is required",
+    invalid: "{{pascalCase name}} must be a valid number",
+    {{else if (eq type "boolean")}}
+    required: "{{pascalCase name}} is required",
+    invalid: "{{pascalCase name}} must be true or false",
+    {{else if (eq type "Date")}}
+    required: "{{pascalCase name}} is required",
+    invalid: "{{pascalCase name}} must be a valid date",
+    {{/if}}
+  },
+  {{/unless}}
+  {{/unless}}
+  {{/each}}
+} as const
+
+// Type guard
+export function is{{entity.name}}(value: unknown): value is {{entity.name}} {
+  try {
+    return create{{entity.name}}Schema.safeParse(value).success
+  } catch {
+    return false
+  }
+}
+
+// Validation error formatter
+export function format{{entity.name}}ValidationErrors(errors: z.ZodError) {
+  return errors.errors.map((error) => {
+    const field = error.path.join(".")
+    const message = {{uppercase entity.name}}_VALIDATION_MESSAGES[field as keyof typeof {{uppercase entity.name}}_VALIDATION_MESSAGES]?.[
+      error.code.toLowerCase() as keyof (typeof {{uppercase entity.name}}_VALIDATION_MESSAGES)[keyof typeof {{uppercase entity.name}}_VALIDATION_MESSAGES]
+    ] || error.message
+    return { field, message }
+  })
+}
+
+// Generated validations for {{entity.name}}
+
+export const {{entity.name}}Schema = z.object({
+  {{#each entity.fields}}
+  {{name}}: z.{{type}}(){{#if isRequired}}.required(){{/if}},
+  {{/each}}
+})

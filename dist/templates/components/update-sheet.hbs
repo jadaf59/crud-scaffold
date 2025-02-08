@@ -1,0 +1,196 @@
+"use client"
+
+import * as React from "react"
+import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { toast } from "sonner"
+
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+
+import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
+import { update{{entity.name}}Schema } from "@/app/_lib/{{entity.tableName}}/validations"
+{{#if entity.hasIcons}}
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+{{/if}}
+
+interface Update{{entity.name}}SheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  {{lowercase entity.name}}: {{entity.name}} | null
+}
+
+export function Update{{entity.name}}Sheet({
+  open,
+  onOpenChange,
+  {{lowercase entity.name}},
+}: Update{{entity.name}}SheetProps) {
+  const [isUpdatePending, startUpdateTransition] = React.useTransition()
+
+  const form = useForm<Update{{entity.name}}Schema>({
+    resolver: zodResolver(update{{entity.name}}Schema),
+    defaultValues: {
+      id: {{lowercase entity.name}}?.id ?? "",
+      {{#each entity.fields}}
+      {{#unless (eq name "id")}}
+      {{#unless (eq name "createdAt")}}
+      {{name}}: {{lowercase ../entity.name}}?.{{name}} ?? {{#if (eq type "string")}}""{{else if (eq type "number")}}0{{else if (eq type "boolean")}}false{{else}}""{{/if}},
+      {{/unless}}
+      {{/unless}}
+      {{/each}}
+    },
+  })
+
+  React.useEffect(() => {
+    if ({{lowercase entity.name}}) {
+      form.reset({
+        id: {{lowercase entity.name}}.id,
+        {{#each entity.fields}}
+        {{#unless (eq name "id")}}
+        {{#unless (eq name "createdAt")}}
+        {{name}}: {{lowercase ../entity.name}}.{{name}},
+        {{/unless}}
+        {{/unless}}
+        {{/each}}
+      })
+    }
+  }, [{{lowercase entity.name}}, form])
+
+  function onSubmit(data: Update{{entity.name}}Schema) {
+    startUpdateTransition(async () => {
+      try {
+        const result = await update{{entity.name}}(data)
+
+        if (result.error) {
+          toast.error(result.error)
+          return
+        }
+
+        toast.success("{{entity.name}} updated successfully")
+        onOpenChange(false)
+      } catch (err) {
+        toast.error("Something went wrong")
+      }
+    })
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Edit {{entity.name}}</SheetTitle>
+          <SheetDescription>
+            Make changes to the {{lowercase entity.name}} here. Click save when you're done.
+          </SheetDescription>
+        </SheetHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-8">
+            {{#each entity.fields}}
+            {{#unless (eq name "id")}}
+            {{#unless (eq name "createdAt")}}
+            <FormField
+              control={form.control}
+              name="{{name}}"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{{pascalCase name}}</FormLabel>
+                  <FormControl>
+                    {{#if isEnum}}
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isUpdatePending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select {{lowercase name}}" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values({{../entity.name}}.{{name}}).map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {{#if ../entity.hasIcons}}
+                            {get{{pascalCase name}}Icon(value) && (
+                              <get{{pascalCase name}}Icon
+                                className="size-4"
+                                aria-hidden="true"
+                              />
+                            )}
+                            {{/if}}
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {{else if (eq type "string")}}
+                    <Input {...field} disabled={isUpdatePending} />
+                    {{else if (eq type "number")}}
+                    <Input
+                      {...field}
+                      type="number"
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      disabled={isUpdatePending}
+                    />
+                    {{else if (eq type "boolean")}}
+                    <Select
+                      value={String(field.value)}
+                      onValueChange={(value) => field.onChange(value === "true")}
+                      disabled={isUpdatePending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select {{lowercase name}}" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {{/if}}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {{/unless}}
+            {{/unless}}
+            {{/each}}
+            <SheetFooter>
+              <Button disabled={isUpdatePending}>
+                {isUpdatePending && (
+                  <Loader
+                    className="mr-2 size-4 animate-spin"
+                    aria-hidden="true"
+                  />
+                )}
+                Save
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
+      </SheetContent>
+    </Sheet>
+  )
+}

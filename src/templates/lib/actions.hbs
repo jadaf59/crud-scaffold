@@ -1,0 +1,168 @@
+"use server"
+
+import { revalidateTag, unstable_noStore } from "next/cache"
+import { db } from "@/lib/db/drizzle"
+import { {{entity.tableName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { takeFirstOrThrow } from "@/lib/db/utils"
+import { asc, eq, inArray, not } from "drizzle-orm"
+import { customAlphabet } from "nanoid"
+
+import { getErrorMessage } from "@/lib/handle-error"
+import { 
+  type CreateTaskSchema,
+  type UpdateTaskSchema,
+  createTaskSchema,
+  updateTaskSchema,
+} from "./validations"
+
+const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 10)
+
+export async function get{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
+  try {
+    const result = await db.query.{{entity.tableName}}.findFirst({
+      where: eq({{entity.tableName}}.id, input.id),
+    })
+
+    if (!result) {
+      return {
+        data: null,
+        error: "{{entity.name}} not found",
+      }
+    }
+
+    return {
+      data: result,
+      error: null,
+    }
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    }
+  }
+}
+
+export async function create{{entity.name}}(input: CreateTaskSchema) {
+  try {
+    const validatedInput = createTaskSchema.parse(input)
+
+    const result = await db
+      .insert({{entity.tableName}})
+      .values({
+        id: nanoid(),
+        {{#each entity.fields}}
+        {{#unless (eq name "id")}}
+        {{#unless (eq name "createdAt")}}
+        {{name}}: validatedInput.{{name}},
+        {{/unless}}
+        {{/unless}}
+        {{/each}}
+        createdAt: new Date(),
+      })
+      .returning()
+
+    const {{lowercase entity.name}} = takeFirstOrThrow(result)
+
+    revalidateTag("{{entity.tableName}}")
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    {{/if}}
+    {{/each}}
+
+    return {
+      data: {{lowercase entity.name}},
+      error: null,
+    }
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    }
+  }
+}
+
+export async function update{{entity.name}}(input: UpdateTaskSchema & { id: {{entity.name}}["id"] }) {
+  try {
+    const validatedInput = updateTaskSchema.parse(input)
+
+    const result = await db
+      .update({{entity.tableName}})
+      .set(validatedInput)
+      .where(eq({{entity.tableName}}.id, input.id))
+      .returning()
+
+    const {{lowercase entity.name}} = takeFirstOrThrow(result)
+
+    revalidateTag("{{entity.tableName}}")
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    {{/if}}
+    {{/each}}
+
+    return {
+      data: {{lowercase entity.name}},
+      error: null,
+    }
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    }
+  }
+}
+
+export async function delete{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
+  try {
+    const result = await db
+      .delete({{entity.tableName}})
+      .where(eq({{entity.tableName}}.id, input.id))
+      .returning()
+
+    const {{lowercase entity.name}} = takeFirstOrThrow(result)
+
+    revalidateTag("{{entity.tableName}}")
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    {{/if}}
+    {{/each}}
+
+    return {
+      data: {{lowercase entity.name}},
+      error: null,
+    }
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    }
+  }
+}
+
+export async function delete{{entity.pluralName}}(input: { ids: {{entity.name}}["id"][] }) {
+  try {
+    const result = await db
+      .delete({{entity.tableName}})
+      .where(inArray({{entity.tableName}}.id, input.ids))
+      .returning()
+
+    revalidateTag("{{entity.tableName}}")
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    {{/if}}
+    {{/each}}
+
+    return {
+      data: result,
+      error: null,
+    }
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    }
+  }
+}

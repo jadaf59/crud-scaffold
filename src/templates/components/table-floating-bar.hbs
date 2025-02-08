@@ -1,0 +1,177 @@
+"use client"
+
+import * as React from "react"
+import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { SelectTrigger } from "@radix-ui/react-select"
+import { type Table } from "@tanstack/react-table"
+import {
+  ArrowUp,
+  CheckCircle2,
+  Download,
+  Loader,
+  Trash2,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { exportTableToCSV } from "@/lib/export"
+import { Button } from "@/components/ui/button"
+import { Portal } from "@/components/ui/portal"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+} from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
+{{#if entity.hasIcons}}
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+{{/if}}
+import { Delete{{entity.pluralName}}Dialog } from "./{{entity.tableName}}-delete-dialog"
+
+interface {{entity.name}}TableFloatingBarProps {
+  table: Table<{{entity.name}}>
+}
+
+export function {{entity.name}}TableFloatingBar({
+  table,
+}: {{entity.name}}TableFloatingBarProps) {
+  const [isPending, startTransition] = React.useTransition()
+  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
+  const selectedRows = table.getSelectedRowModel().rows
+
+  {{#each entity.fields}}
+  {{#if isEnum}}
+  const update{{pascalCase name}} = React.useCallback(
+    (value: {{../entity.name}}["{{name}}"]) => {
+      startTransition(async () => {
+        try {
+          const results = await Promise.all(
+            selectedRows.map((row) =>
+              update{{../../entity.name}}({
+                id: row.original.id,
+                {{name}}: value,
+              })
+            )
+          )
+
+          const errors = results.filter((result) => result.error)
+
+          if (errors.length > 0) {
+            toast.error(`Failed to update ${errors.length} {{lowercase ../../entity.pluralName}}`)
+            return
+          }
+
+          toast.success("{{pascalCase name}} updated successfully")
+        } catch (err) {
+          toast.error("Something went wrong")
+        }
+      })
+    },
+    [selectedRows]
+  )
+  {{/if}}
+  {{/each}}
+
+  return (
+    <Portal>
+      <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto flex max-w-fit items-center gap-4 rounded-lg border bg-background p-4 shadow-lg">
+        <div className="text-sm font-medium">
+          {selectedRows.length} row{selectedRows.length === 1 ? "" : "s"} selected
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {{#each entity.fields}}
+            {{#if isEnum}}
+            <Select onValueChange={(value) => update{{pascalCase name}}(value)}>
+              <SelectTrigger>
+                <span className="flex items-center gap-2">
+                  <ArrowUp className="size-3.5" aria-hidden="true" />
+                  {{pascalCase name}}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>{{pascalCase name}}</SelectLabel>
+                  {Object.values({{../entity.name}}.{{name}}).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {{#if ../entity.hasIcons}}
+                      {get{{pascalCase name}}Icon(value) && (
+                        <get{{pascalCase name}}Icon
+                          className="size-4"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {{/if}}
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {{/if}}
+            {{/each}}
+          </div>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() =>
+                    exportTableToCSV(table, {
+                      filename: "{{lowercase entity.pluralName}}",
+                      excludeColumns: ["select", "actions"],
+                    })
+                  }
+                >
+                  <Download className="size-3.5" aria-hidden="true" />
+                  Export
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="border bg-accent font-semibold text-foreground dark:bg-zinc-900">
+                <p>Export as CSV</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  {isPending ? (
+                    <Loader
+                      className="size-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="border bg-accent font-semibold text-foreground dark:bg-zinc-900">
+                <p>Delete {{lowercase entity.pluralName}}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+      <Delete{{entity.pluralName}}Dialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        {{entity.tableName}}={selectedRows.map((row) => row.original)}
+        showTrigger={false}
+        onSuccess={() => table.toggleAllPageRowsSelected(false)}
+      />
+    </Portal>
+  )
+}

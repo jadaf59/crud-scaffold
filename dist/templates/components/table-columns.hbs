@@ -1,0 +1,193 @@
+"use client"
+
+import * as React from "react"
+import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type DataTableRowAction } from "@/types"
+import { type ColumnDef } from "@tanstack/react-table"
+import { Ellipsis } from "lucide-react"
+import { toast } from "sonner"
+
+import { getErrorMessage } from "@/lib/handle-error"
+import { formatDate } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
+{{#if entity.hasIcons}}
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+{{/if}}
+import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
+
+interface GetColumnsProps {
+  setRowAction: React.Dispatch<React.SetStateAction<DataTableRowAction<{{entity.name}}> | null>>
+}
+
+export function getColumns({ setRowAction }: GetColumnsProps): ColumnDef<{{entity.name}}, unknown>[] {
+  return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {{#each entity.fields}}
+    {{#if (eq type "string")}}
+    {
+      accessorKey: "{{name}}",
+      header: "{{pascalCase name}}",
+      cell: ({ row }) => <div className="w-[80px]">{row.getValue("{{name}}")}</div>,
+    },
+    {{else if (eq type "Date")}}
+    {
+      accessorKey: "{{name}}",
+      header: "{{pascalCase name}}",
+      cell: ({ row }) => formatDate(row.getValue("{{name}}")),
+    },
+    {{else if (eq type "number")}}
+    {
+      accessorKey: "{{name}}",
+      header: "{{pascalCase name}}",
+      cell: ({ row }) => <div className="w-[80px]">{row.getValue("{{name}}")}</div>,
+    },
+    {{else if (eq type "boolean")}}
+    {
+      accessorKey: "{{name}}",
+      header: "{{pascalCase name}}",
+      cell: ({ row }) => (
+        <Badge variant={row.getValue("{{name}}") ? "default" : "secondary"}>
+          {row.getValue("{{name}}") ? "Yes" : "No"}
+        </Badge>
+      ),
+    },
+    {{else if isEnum}}
+    {
+      accessorKey: "{{name}}",
+      header: "{{pascalCase name}}",
+      cell: ({ row }) => {
+        const value = row.getValue("{{name}}") as {{../entity.name}}["{{name}}"]
+        {{#if ../entity.hasIcons}}
+        const Icon = get{{pascalCase name}}Icon(value)
+        return (
+          <div className="flex items-center gap-2">
+            <Icon className="size-4" aria-hidden="true" />
+            <span className="capitalize">{value}</span>
+          </div>
+        )
+        {{else}}
+        return <span className="capitalize">{value}</span>
+        {{/if}}
+      },
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id))
+      },
+    },
+    {{/if}}
+    {{/each}}
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+            >
+              <Ellipsis className="size-4" aria-hidden="true" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[160px]">
+            <DropdownMenuItem onClick={() => setRowAction({ type: "update", row })}>
+              Edit
+              <DropdownMenuShortcut>⌘E</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            {{#each entity.fields}}
+            {{#if isEnum}}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>{{pascalCase name}}</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={row.getValue("{{name}}")}
+                  onValueChange={async (value) => {
+                    try {
+                      const result = await update{{../../entity.name}}({
+                        id: row.original.id,
+                        {{name}}: value as {{../../entity.name}}["{{name}}"],
+                      })
+
+                      if (result.error) {
+                        toast.error(result.error)
+                        return
+                      }
+
+                      toast.success("{{pascalCase name}} updated successfully")
+                    } catch (err) {
+                      toast.error(getErrorMessage(err))
+                    }
+                  }}
+                >
+                  {Object.values({{../entity.name}}.{{name}}.enumValues).map((value) => (
+                    <DropdownMenuRadioItem
+                      key={value}
+                      value={value}
+                      className="flex items-center gap-2"
+                    >
+                      {{#if ../entity.hasIcons}}
+                      {get{{pascalCase name}}Icon(value) && (
+                        <get{{pascalCase name}}Icon
+                          className="size-4"
+                          aria-hidden="true"
+                        />
+                      )}
+                      {{/if}}
+                      {value}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            {{/if}}
+            {{/each}}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => setRowAction({ type: "delete", row })}
+            >
+              Delete
+              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ]
+}

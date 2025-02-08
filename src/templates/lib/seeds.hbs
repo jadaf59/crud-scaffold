@@ -1,0 +1,110 @@
+import { db } from "@/lib/db/drizzle"
+import { {{entity.tableName}} } from "@/lib/db/schema/schema"
+import { faker } from "@faker-js/faker"
+import { customAlphabet } from "nanoid"
+
+const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 10)
+
+export async function seed{{entity.pluralName}}(count = 100) {
+  const {{lowercase entity.pluralName}} = Array.from({ length: count }, () => ({
+    id: nanoid(),
+    {{#each entity.fields}}
+    {{#unless (eq name "id")}}
+    {{#if isEnum}}
+    {{name}}: faker.helpers.arrayElement({{../entity.name}}.{{name}}.enumValues),
+    {{else if (eq type "string")}}
+    {{name}}: faker.lorem.words(3),
+    {{else if (eq type "number")}}
+    {{name}}: faker.number.int({ min: 0, max: 1000 }),
+    {{else if (eq type "boolean")}}
+    {{name}}: faker.datatype.boolean(),
+    {{else if (eq type "Date")}}
+    {{name}}: faker.date.recent(),
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+    createdAt: faker.date.recent(),
+  }))
+
+  console.log(`Seeding ${count} {{lowercase entity.pluralName}}...`)
+
+  try {
+    const chunks = chunk{{entity.pluralName}}({{lowercase entity.pluralName}}, 100)
+    
+    for (const chunk of chunks) {
+      await db.insert({{entity.tableName}}).values(chunk)
+    }
+
+    console.log("✓ Seeded {{lowercase entity.pluralName}} successfully")
+  } catch (error) {
+    console.error("× Error seeding {{lowercase entity.pluralName}}:", error)
+    throw error
+  }
+}
+
+// Helper function to chunk array for batch inserts
+function chunk{{entity.pluralName}}<T>(array: T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, index) =>
+    array.slice(index * size, (index + 1) * size)
+  )
+}
+
+// Generate a single {{lowercase entity.name}}
+export function generate{{entity.name}}() {
+  return {
+    id: nanoid(),
+    {{#each entity.fields}}
+    {{#unless (eq name "id")}}
+    {{#if isEnum}}
+    {{name}}: faker.helpers.arrayElement({{../entity.name}}.{{name}}.enumValues),
+    {{else if (eq type "string")}}
+    {{name}}: faker.lorem.words(3),
+    {{else if (eq type "number")}}
+    {{name}}: faker.number.int({ min: 0, max: 1000 }),
+    {{else if (eq type "boolean")}}
+    {{name}}: faker.datatype.boolean(),
+    {{else if (eq type "Date")}}
+    {{name}}: faker.date.recent(),
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+    createdAt: faker.date.recent(),
+  }
+}
+
+// Generate multiple {{lowercase entity.pluralName}}
+export function generate{{entity.pluralName}}(count: number) {
+  return Array.from({ length: count }, generate{{entity.name}})
+}
+
+// Clear all {{lowercase entity.pluralName}}
+export async function clear{{entity.pluralName}}() {
+  try {
+    await db.delete({{entity.tableName}})
+    console.log("✓ Cleared {{lowercase entity.pluralName}} successfully")
+  } catch (error) {
+    console.error("× Error clearing {{lowercase entity.pluralName}}:", error)
+    throw error
+  }
+}
+
+// Reset and seed {{lowercase entity.pluralName}}
+export async function reset{{entity.pluralName}}(count = 100) {
+  try {
+    await clear{{entity.pluralName}}()
+    await seed{{entity.pluralName}}(count)
+  } catch (error) {
+    console.error("× Error resetting {{lowercase entity.pluralName}}:", error)
+    throw error
+  }
+}
+
+// Generated seed data for {{entity.name}}
+
+export const {{entity.name}}Seeds = [
+  {{#each entity.fields}}
+  {
+    {{name}}: "Sample {{name}}",
+  },
+  {{/each}}
+]

@@ -1,0 +1,248 @@
+"use client"
+
+import * as React from "react"
+import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import type {
+  DataTableAdvancedFilterField,
+  DataTableFilterField,
+  DataTableRowAction,
+} from "@/types"
+
+import { useDataTable } from "@/hooks/use-data-table"
+import { DataTable } from "@/components/data-table/data-table"
+import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar"
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar"
+
+import type {
+  get{{entity.name}}PriorityCounts,
+  get{{entity.pluralName}},
+  get{{entity.name}}StatusCounts,
+} from "@/app/_lib/{{entity.tableName}}/queries"
+{{#if entity.hasIcons}}
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+{{/if}}
+import { Delete{{entity.pluralName}}Dialog } from "./{{entity.tableName}}-delete-dialog"
+import { useFeatureFlags } from "./{{entity.tableName}}-feature-flags-provider"
+import { getColumns } from "./{{entity.tableName}}-table-columns"
+import { {{entity.name}}TableFloatingBar } from "./{{entity.tableName}}-table-floating-bar"
+import { {{entity.name}}TableToolbarActions } from "./{{entity.tableName}}-table-toolbar-actions"
+import { Update{{entity.name}}Sheet } from "./{{entity.tableName}}-update-sheet"
+
+interface {{entity.name}}TableProps {
+  promises: Promise<[
+    Awaited<ReturnType<typeof get{{entity.pluralName}}>>,
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    Awaited<ReturnType<typeof get{{pascalCase ../entity.name}}{{pascalCase name}}Counts>>,
+    {{/if}}
+    {{/each}}
+  ]>
+}
+
+export function {{entity.name}}Table({ promises }: {{entity.name}}TableProps) {
+  const { featureFlags } = useFeatureFlags()
+  const [
+    { data, pageCount }, 
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    {{name}}Counts,
+    {{/if}}
+    {{/each}}
+  ] = React.use(promises)
+  const [rowAction, setRowAction] = React.useState<DataTableRowAction<{{entity.name}}> | null>(null)
+
+  const columns = React.useMemo(
+    () => getColumns({ setRowAction }),
+    [setRowAction]
+  )
+
+  const filterFields: DataTableFilterField[] = [
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      options: {{../entity.name}}.{{name}}.enumValues.map((value) => ({
+        label: value,
+        value: value,
+        {{#if ../entity.hasIcons}}
+        icon: get{{pascalCase name}}Icon(value),
+        {{/if}}
+      })),
+    },
+    {{else if (eq type "string")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+    },
+    {{else if (eq type "Date")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      type: "date",
+    },
+    {{else if (eq type "number")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      type: "number",
+    },
+    {{else if (eq type "boolean")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      options: [
+        { label: "Yes", value: "true" },
+        { label: "No", value: "false" },
+      ],
+    },
+    {{/if}}
+    {{/each}}
+  ]
+
+  const advancedFilterFields: DataTableAdvancedFilterField[] = [
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      options: [
+        { label: "equals", value: "equals" },
+        { label: "does not equal", value: "doesNotEqual" },
+      ],
+      values: {{../entity.name}}.{{name}}.enumValues.map((value) => ({
+        label: value,
+        value: value,
+        {{#if ../entity.hasIcons}}
+        icon: get{{pascalCase name}}Icon(value),
+        {{/if}}
+      })),
+    },
+    {{else if (eq type "string")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      options: [
+        { label: "contains", value: "contains" },
+        { label: "does not contain", value: "doesNotContain" },
+        { label: "equals", value: "equals" },
+        { label: "does not equal", value: "doesNotEqual" },
+      ],
+    },
+    {{else if (eq type "Date")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      type: "date",
+      options: [
+        { label: "equals", value: "equals" },
+        { label: "does not equal", value: "doesNotEqual" },
+        { label: "greater than", value: "greaterThan" },
+        { label: "greater than or equal to", value: "greaterThanOrEqual" },
+        { label: "less than", value: "lessThan" },
+        { label: "less than or equal to", value: "lessThanOrEqual" },
+      ],
+    },
+    {{else if (eq type "number")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      type: "number",
+      options: [
+        { label: "equals", value: "equals" },
+        { label: "does not equal", value: "doesNotEqual" },
+        { label: "greater than", value: "greaterThan" },
+        { label: "greater than or equal to", value: "greaterThanOrEqual" },
+        { label: "less than", value: "lessThan" },
+        { label: "less than or equal to", value: "lessThanOrEqual" },
+      ],
+    },
+    {{else if (eq type "boolean")}}
+    {
+      id: "{{name}}",
+      title: "{{pascalCase name}}",
+      placeholder: "Filter by {{lowercase name}}...",
+      options: [
+        { label: "equals", value: "equals" },
+        { label: "does not equal", value: "doesNotEqual" },
+      ],
+      values: [
+        { label: "Yes", value: "true" },
+        { label: "No", value: "false" },
+      ],
+    },
+    {{/if}}
+    {{/each}}
+  ]
+
+  const enableAdvancedTable = featureFlags.includes("advancedTable")
+  const enableFloatingBar = featureFlags.includes("floatingBar")
+
+  const table = useDataTable({
+    data,
+    columns,
+    pageCount,
+    filterFields: enableAdvancedTable ? advancedFilterFields : filterFields,
+    searchableColumns: [
+      {{#each entity.fields}}
+      {{#if (eq type "string")}}
+      { id: "{{name}}", title: "{{pascalCase name}}" },
+      {{/if}}
+      {{/each}}
+    ],
+    enableAdvancedFilter: enableAdvancedTable,
+    initialState: {
+      sorting: [{ id: "createdAt", desc: true }],
+      columnPinning: { right: ["actions"] },
+    },
+    getRowId: (originalRow) => originalRow.id,
+    shallow: false,
+    clearOnDefault: true,
+  })
+
+  return (
+    <>
+      <DataTable
+        table={table}
+        floatingBar={
+          enableFloatingBar ? <{{entity.name}}TableFloatingBar table={table} /> : null
+        }
+      >
+        {enableAdvancedTable ? (
+          <DataTableAdvancedToolbar
+            table={table}
+            filterFields={advancedFilterFields}
+            shallow={false}
+          >
+            <{{entity.name}}TableToolbarActions table={table} />
+          </DataTableAdvancedToolbar>
+        ) : (
+          <DataTableToolbar table={table} filterFields={filterFields}>
+            <{{entity.name}}TableToolbarActions table={table} />
+          </DataTableToolbar>
+        )}
+      </DataTable>
+      <Update{{entity.name}}Sheet
+        open={rowAction?.type === "update"}
+        onOpenChange={() => setRowAction(null)}
+        {{lowercase entity.name}}={rowAction?.row.original ?? null}
+      />
+      <Delete{{entity.pluralName}}Dialog
+        open={rowAction?.type === "delete"}
+        onOpenChange={() => setRowAction(null)}
+        {{lowercase entity.pluralName}}={rowAction?.row.original ? [rowAction?.row.original] : []}
+        showTrigger={false}
+        onSuccess={() => rowAction?.row.toggleSelected(false)}
+      />
+    </>
+  )
+}
