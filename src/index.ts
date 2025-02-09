@@ -14,7 +14,8 @@ program
   .argument('<entity>', 'Name of the Drizzle entity to scaffold')
   .option('-o, --output <dir>', 'Output directory', './app')
   .option('-f, --force', 'Overwrite existing files', false)
-  .action(async (entityName: string, options: { output: string; force: boolean }) => {
+  .option('-p, --page', 'Generate Next.js page', true)
+  .action(async (entityName: string, options: { output: string; force: boolean; page: boolean }) => {
     try {
       // Load and validate schema
       const schema = await parseSchema();
@@ -34,7 +35,8 @@ program
           documentation: false,
           prettier: true,
           eslint: false,
-          force: options.force
+          force: options.force,
+          page: options.page
         }
       };
 

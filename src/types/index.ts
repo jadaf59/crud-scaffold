@@ -87,6 +87,7 @@ export interface GeneratorConfig {
     prettier: boolean
     eslint: boolean
     force: boolean
+    page: boolean
   }
   hooks?: {
     beforeGenerate?: () => Promise<void>
@@ -108,6 +109,7 @@ export interface EntityConfig {
   pluralName: string;
   tableName: string;
   fields: EntityField[];
+  sourceFile: string;
   enums: Record<string, {
     values: string[];
     icons?: Record<string, string>;

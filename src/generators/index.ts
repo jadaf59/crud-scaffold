@@ -5,7 +5,7 @@ import type { GeneratorConfig } from "../types/index.js"
 
 export class CRUDGenerator {
   private config: GeneratorConfig
-  
+
   constructor(config: GeneratorConfig) {
     this.config = config
     this.registerHelpers()
@@ -20,10 +20,39 @@ export class CRUDGenerator {
         .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
         .join("")
     })
-    Handlebars.registerHelper('eq', function(arg1, arg2) {
+    Handlebars.registerHelper('eq', function (arg1, arg2) {
       return arg1 === arg2;
     });
-    // Add more helpers as needed
+    Handlebars.registerHelper("ne", function (a, b) {
+      return a !== b;
+    });
+    Handlebars.registerHelper("getCellWidth", function (name: string, type: string) {
+      switch (type) {
+        case "string":
+          return name.includes("description") ? "40rem" : "12rem"
+        case "number":
+          return "8rem"
+        case "boolean":
+          return "8rem"
+        case "Date":
+          return "10rem"
+        case "enum":
+          return "12rem"
+        default:
+          return "12rem"
+      }
+    })
+    Handlebars.registerHelper("countSearchableFields", function (fields: any[]) {
+      return fields.filter((f: any) => f.isSearchable).length
+    })
+
+    Handlebars.registerHelper("countEnumFields", function (fields: any[]) {
+      return fields.filter((f: any) => f.isEnum).length
+    })
+
+    Handlebars.registerHelper("jsx", function(value) {
+      return new Handlebars.SafeString(`{${value}}`);
+    });
   }
 
   private async generateFile(templateName: string, outputPath: string): Promise<void> {
@@ -31,7 +60,7 @@ export class CRUDGenerator {
       // Adjust template path to match our directory structure
       const templatePath = path.join(this.config.templatesDir, `${templateName}.hbs`);
       console.log(`Looking for template at: ${templatePath}`);
-      
+
       // Check if template exists
       try {
         await fs.access(templatePath);
@@ -41,13 +70,13 @@ export class CRUDGenerator {
 
       const templateContent = await fs.readFile(templatePath, 'utf-8');
       const template = Handlebars.compile(templateContent);
-      
+
       // Create output directory if it doesn't exist
       await fs.mkdir(path.dirname(outputPath), { recursive: true });
-      
+
       const content = template({ entity: this.config.entity });
       await fs.writeFile(outputPath, content);
-      
+
       console.log(`Generated ${outputPath}`);
     } catch (error) {
       console.error(`Error generating ${outputPath}:`, error);
@@ -73,10 +102,10 @@ export class CRUDGenerator {
 
       // Generate component files with updated paths
       const componentsDir = path.join(this.config.outputDir, `_components/${this.config.entity.tableName}`)
-      
+
       // Generate feature flags provider as a shared component
       await this.generateFile("components/feature-flags-provider", path.join(componentsDir, "feature-flags-provider.tsx"))
-      
+
       // Generate entity-specific components
       await this.generateFile("components/table", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table.tsx`))
       await this.generateFile("components/table-columns", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table-columns.tsx`))
@@ -85,7 +114,7 @@ export class CRUDGenerator {
       await this.generateFile("components/update-sheet", path.join(componentsDir, `update-${this.config.entity.name.toLowerCase()}-sheet.tsx`))
       await this.generateFile("components/delete-dialog", path.join(componentsDir, `delete-${this.config.entity.name.toLowerCase()}-dialog.tsx`))
       await this.generateFile("components/feature-flags", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-feature-flags.tsx`))
-      
+
       if (this.config.options?.tests) {
         // Generate test files
         const testsDir = path.join(this.config.outputDir, `__tests__/${this.config.entity.tableName}`)
@@ -99,8 +128,18 @@ export class CRUDGenerator {
         await this.generateFile("docs/entity", path.join(docsDir, `${this.config.entity.tableName}.md`))
       }
 
+      if (this.config.options?.page || true) {
+        console.log("Generating page...")
+        await this.generateFile(
+          "components/page",
+          path.join(this.config.outputDir, "(app)/app", this.config.entity.pluralName.toLowerCase(), "page.tsx")
+        )
+      } else {
+        console.log("Skipping page generation...")
+      }
+
       await this.config.hooks?.afterGenerate?.()
-      
+
       console.log("CRUD generation completed successfully!")
     } catch (error) {
       console.error("Error during CRUD generation:", error)

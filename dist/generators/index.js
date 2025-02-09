@@ -18,7 +18,34 @@ export class CRUDGenerator {
         Handlebars.registerHelper('eq', function (arg1, arg2) {
             return arg1 === arg2;
         });
-        // Add more helpers as needed
+        Handlebars.registerHelper("ne", function (a, b) {
+            return a !== b;
+        });
+        Handlebars.registerHelper("getCellWidth", function (name, type) {
+            switch (type) {
+                case "string":
+                    return name.includes("description") ? "40rem" : "12rem";
+                case "number":
+                    return "8rem";
+                case "boolean":
+                    return "8rem";
+                case "Date":
+                    return "10rem";
+                case "enum":
+                    return "12rem";
+                default:
+                    return "12rem";
+            }
+        });
+        Handlebars.registerHelper("countSearchableFields", function (fields) {
+            return fields.filter((f) => f.isSearchable).length;
+        });
+        Handlebars.registerHelper("countEnumFields", function (fields) {
+            return fields.filter((f) => f.isEnum).length;
+        });
+        Handlebars.registerHelper("jsx", function (value) {
+            return new Handlebars.SafeString(`{${value}}`);
+        });
     }
     async generateFile(templateName, outputPath) {
         try {
@@ -80,6 +107,13 @@ export class CRUDGenerator {
                 // Generate documentation
                 const docsDir = path.join(this.config.outputDir, "docs");
                 await this.generateFile("docs/entity", path.join(docsDir, `${this.config.entity.tableName}.md`));
+            }
+            if (this.config.options?.page || true) {
+                console.log("Generating page...");
+                await this.generateFile("components/page", path.join(this.config.outputDir, "(app)/app", this.config.entity.pluralName.toLowerCase(), "page.tsx"));
+            }
+            else {
+                console.log("Skipping page generation...");
             }
             await this.config.hooks?.afterGenerate?.();
             console.log("CRUD generation completed successfully!");

@@ -1,29 +1,91 @@
-import { z } from "zod"
-import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
+{{#if (eq entity.sourceFile "schema")}}
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+{{else}}
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/{{entity.sourceFile}}"
+{{/if}}
+import {
+  createSearchParamsCache,
+  parseAsArrayOf,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server"
+import * as z from "zod"
 
-const {{lowercase entity.name}}Schema = z.object({
+import { getFiltersStateParser, getSortingStateParser } from "@/lib/parsers"
+
+export const searchParamsCache = createSearchParamsCache({
+  flags: parseAsArrayOf(z.enum(["advancedTable", "floatingBar"])).withDefault([]),
+  page: parseAsInteger.withDefault(1),
+  perPage: parseAsInteger.withDefault(10),
+  sort: getSortingStateParser<{{entity.name}}>().withDefault([
+    { id: "createdAt", desc: true },
+  ]),
   {{#each entity.fields}}
-  {{#if (eq type "string")}}
-  {{name}}: z.string(),
-  {{/if}}
-  {{#if (eq type "number")}}
-  {{name}}: z.number(),
-  {{/if}}
-  {{#if (eq type "boolean")}}
-  {{name}}: z.boolean(),
-  {{/if}}
-  {{#if (eq type "Date")}}
-  {{name}}: z.date(),
-  {{/if}}
+  {{#if isSearchable}}
   {{#if isEnum}}
-  {{name}}: z.enum([{{#each ../entity.enums}}{{#if (eq name ../name)}}{{#each values}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}{{/if}}{{/each}}]),
+  {{name}}: parseAsArrayOf(z.enum({{lowercase ../entity.pluralName}}.{{name}}.enumValues)).withDefault([]),
+  {{else}}
+  {{name}}: parseAsString.withDefault(""),
+  {{/if}}
+  {{/if}}
+  {{/each}}
+  from: parseAsString.withDefault(""),
+  to: parseAsString.withDefault(""),
+  // advanced filter
+  filters: getFiltersStateParser().withDefault([]),
+  joinOperator: parseAsStringEnum(["and", "or"]).withDefault("and"),
+})
+
+export const create{{entity.name}}Schema = z.object({
+  {{#each entity.fields}}
+  {{#if (ne name "id")}}
+  {{#if (ne name "createdAt")}}
+  {{#if (ne name "updatedAt")}}
+  {{#if isEnum}}
+  {{name}}: z.enum({{lowercase ../entity.pluralName}}.{{name}}.enumValues),
+  {{else if (eq type "Date")}}
+  {{name}}: z.date(),
+  {{else}}
+  {{name}}: z.{{lowercase type}}(),
+  {{/if}}
+  {{/if}}
+  {{/if}}
   {{/if}}
   {{/each}}
 })
 
-export const create{{entity.name}}Schema = {{lowercase entity.name}}Schema
-export const update{{entity.name}}Schema = create{{entity.name}}Schema.partial()
+export const update{{entity.name}}Schema = z.object({
+  {{#each entity.fields}}
+  {{#if (ne name "id")}}
+  {{#if (ne name "createdAt")}}
+  {{#if (ne name "updatedAt")}}
+  {{#if isEnum}}
+  {{name}}: z.enum({{lowercase ../entity.pluralName}}.{{name}}.enumValues).optional(),
+  {{else if (eq type "Date")}}
+  {{name}}: z.date().optional(),
+  {{else}}
+  {{name}}: z.{{lowercase type}}().optional(),
+  {{/if}}
+  {{/if}}
+  {{/if}}
+  {{/if}}
+  {{/each}}
+})
 
+export const {{entity.name}}Schema = z.object({
+  {{#each entity.fields}}
+  {{#if isEnum}}
+  {{name}}: z.enum({{lowercase ../entity.pluralName}}.{{name}}.enumValues),
+  {{else if (eq type "Date")}}
+  {{name}}: z.date(),
+  {{else}}
+  {{name}}: z.{{lowercase type}}(),
+  {{/if}}
+  {{/each}}
+})
+
+export type Get{{pascalCase entity.pluralName}}Schema = Awaited<ReturnType<typeof searchParamsCache.parse>>
 export type Create{{entity.name}}Schema = z.infer<typeof create{{entity.name}}Schema>
 export type Update{{entity.name}}Schema = z.infer<typeof update{{entity.name}}Schema>
 
@@ -75,11 +137,3 @@ export function format{{entity.name}}ValidationErrors(errors: z.ZodError) {
     return { field, message }
   })
 }
-
-// Generated validations for {{entity.name}}
-
-export const {{entity.name}}Schema = z.object({
-  {{#each entity.fields}}
-  {{name}}: z.{{type}}(){{#if isRequired}}.required(){{/if}},
-  {{/each}}
-})

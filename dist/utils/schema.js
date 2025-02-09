@@ -111,12 +111,15 @@ export async function parseSchema() {
                                 }
                             }
                         });
+                        // Get the relative path from schema root
+                        const relativePath = path.relative(path.dirname(config.schema), schemaFile).replace(/\.ts$/, '');
                         entities.push({
-                            name: entityName, // This is now the singular form (e.g., "Company")
-                            pluralName: tableName, // This is the plural form (e.g., "companies")
-                            tableName, // Keep the table name as is
+                            name: entityName,
+                            pluralName: tableName,
+                            tableName,
                             fields,
-                            enums: {}
+                            enums: {},
+                            sourceFile: relativePath.split('/').pop() ?? '',
                         });
                     }
                 }

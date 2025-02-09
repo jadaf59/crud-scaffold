@@ -1,6 +1,10 @@
 import "server-only"
 
+{{#if (eq entity.sourceFile "schema")}}
 import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+{{else}}
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/{{entity.sourceFile}}"
+{{/if}}
 import {
   and,
   asc,
@@ -17,9 +21,9 @@ import { filterColumns } from "@/lib/filter-columns"
 import { unstable_cache } from "@/lib/unstable-cache"
 import { db } from "@/lib/db/drizzle"
 
-import { type Get{{entity.pluralName}}Schema } from "./validations"
+import { type Get{{pascalCase entity.pluralName}}Schema } from "./validations"
 
-export async function get{{entity.pluralName}}(input: Get{{entity.pluralName}}Schema) {
+export async function get{{pascalCase entity.pluralName}}(input: Get{{pascalCase entity.pluralName}}Schema) {
   return await unstable_cache(
     async () => {
       try {

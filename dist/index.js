@@ -11,6 +11,7 @@ program
     .argument('<entity>', 'Name of the Drizzle entity to scaffold')
     .option('-o, --output <dir>', 'Output directory', './app')
     .option('-f, --force', 'Overwrite existing files', false)
+    .option('-p, --page', 'Generate Next.js page', true)
     .action(async (entityName, options) => {
     try {
         // Load and validate schema
@@ -29,7 +30,8 @@ program
                 documentation: false,
                 prettier: true,
                 eslint: false,
-                force: options.force
+                force: options.force,
+                page: options.page
             }
         };
         const generator = new CRUDGenerator(generatorOptions);

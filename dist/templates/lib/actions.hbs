@@ -2,7 +2,11 @@
 
 import { revalidateTag } from "next/cache"
 import { db } from "@/lib/db/drizzle"
-import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
+{{#if (eq entity.sourceFile "schema")}}
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+{{else}}
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/{{entity.sourceFile}}"
+{{/if}}
 import { takeFirstOrThrow } from "@/lib/db/utils"
 import { eq, inArray } from "drizzle-orm"
 import { customAlphabet } from "nanoid"
@@ -19,8 +23,8 @@ const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 10)
 
 export async function get{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
   try {
-    const result = await db.query.{{lowercase entity.name}}.findFirst({
-      where: eq({{lowercase entity.name}}.id, input.id),
+    const result = await db.query.{{lowercase entity.pluralName}}.findFirst({
+      where: eq({{lowercase entity.pluralName}}.id, input.id),
     })
 
     if (!result) {
@@ -47,7 +51,7 @@ export async function create{{entity.name}}(input: Create{{entity.name}}Schema) 
     const validatedInput = create{{entity.name}}Schema.parse(input)
 
     const result = await db
-      .insert({{lowercase entity.name}})
+      .insert({{lowercase entity.pluralName}})
       .values({
         id: nanoid(),
         {{#each entity.fields}}
@@ -63,7 +67,7 @@ export async function create{{entity.name}}(input: Create{{entity.name}}Schema) 
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{lowercase entity.name}}")
+    revalidateTag("{{lowercase entity.pluralName}}")
     {{#each entity.fields}}
     {{#if isEnum}}
     revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
@@ -87,14 +91,14 @@ export async function update{{entity.name}}(input: Update{{entity.name}}Schema &
     const validatedInput = update{{entity.name}}Schema.parse(input)
 
     const result = await db
-      .update({{lowercase entity.name}})
+      .update({{lowercase entity.pluralName}})
       .set(validatedInput)
-      .where(eq({{lowercase entity.name}}.id, input.id))
+      .where(eq({{lowercase entity.pluralName}}.id, input.id))
       .returning()
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{lowercase entity.name}}")
+    revalidateTag("{{lowercase entity.pluralName}}")
     {{#each entity.fields}}
     {{#if isEnum}}
     revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
@@ -116,13 +120,13 @@ export async function update{{entity.name}}(input: Update{{entity.name}}Schema &
 export async function delete{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
   try {
     const result = await db
-      .delete({{lowercase entity.name}})
-      .where(eq({{lowercase entity.name}}.id, input.id))
+      .delete({{lowercase entity.pluralName}})
+      .where(eq({{lowercase entity.pluralName}}.id, input.id))
       .returning()
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{lowercase entity.name}}")
+    revalidateTag("{{lowercase entity.pluralName}}")
     {{#each entity.fields}}
     {{#if isEnum}}
     revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
@@ -144,11 +148,11 @@ export async function delete{{entity.name}}(input: { id: {{entity.name}}["id"] }
 export async function delete{{entity.pluralName}}(input: { ids: {{entity.name}}["id"][] }) {
   try {
     const result = await db
-      .delete({{lowercase entity.name}})
-      .where(inArray({{lowercase entity.name}}.id, input.ids))
+      .delete({{lowercase entity.pluralName}})
+      .where(inArray({{lowercase entity.pluralName}}.id, input.ids))
       .returning()
 
-    revalidateTag("{{lowercase entity.name}}")
+    revalidateTag("{{lowercase entity.pluralName}}")
     {{#each entity.fields}}
     {{#if isEnum}}
     revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")

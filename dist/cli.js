@@ -43,6 +43,7 @@ program
     .option("-t, --typescript", "Generate TypeScript files", true)
     .option("--tests", "Generate test files", false)
     .option("--docs", "Generate documentation", false)
+    .option("--page", "Generate Next.js page", false)
     .action(async (options) => {
     console.log(chalk.blue("Starting CRUD scaffold generation..."));
     const spinner = ora("Initializing...").start();
@@ -90,7 +91,8 @@ program
                     documentation: options.docs,
                     prettier: true,
                     eslint: false,
-                    force: false
+                    force: false,
+                    page: options.page
                 }
             };
             console.log(chalk.yellow("Creating generator instance..."));

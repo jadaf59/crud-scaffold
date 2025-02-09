@@ -1,0 +1,75 @@
+import * as React from "react"
+import { type SearchParams } from "@/types"
+
+import { getValidFilters } from "@/lib/data-table"
+import { Skeleton } from "@/components/ui/skeleton"
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton"
+import { DateRangePicker } from "@/components/date-range-picker"
+import { Shell } from "@/components/shell"
+
+import { FeatureFlagsProvider } from "@/app/_components/{{lowercase entity.pluralName}}/feature-flags-provider"
+import { {{pascalCase entity.pluralName}}Table } from "@/app/_components/{{lowercase entity.pluralName}}/{{lowercase entity.pluralName}}-table"
+import {
+  get{{pascalCase entity.pluralName}},
+  {{#each entity.fields}}
+  {{#if isEnum}}
+  get{{pascalCase ../entity.name}}{{pascalCase name}}Counts,
+  {{/if}}
+  {{/each}}
+} from "@/app/_lib/{{lowercase entity.pluralName}}/queries"
+import { searchParamsCache } from "@/app/_lib/{{lowercase entity.pluralName}}/validations"
+
+interface IndexPageProps {
+  searchParams: Promise<SearchParams>
+}
+
+export default async function IndexPage(props: IndexPageProps) {
+  const searchParams = await props.searchParams
+  const search = searchParamsCache.parse(searchParams)
+
+  const validFilters = getValidFilters(search.filters)
+
+  const promises = Promise.all([
+    get{{pascalCase entity.pluralName}}({
+      ...search,
+      filters: validFilters,
+    }),
+    {{#each entity.fields}}
+    {{#if isEnum}}
+    get{{pascalCase ../entity.name}}{{pascalCase name}}Counts(),
+    {{/if}}
+    {{/each}}
+  ])
+
+  return (
+    <Shell className="gap-2">
+      <FeatureFlagsProvider>
+        <React.Suspense fallback={<Skeleton className="h-7 w-52" />}>
+          <DateRangePicker
+            triggerSize="sm"
+            triggerClassName="ml-auto w-56 sm:w-60"
+            align="end"
+            shallow={false}
+          />
+        </React.Suspense>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={{jsx entity.fields.length}}
+              searchableColumnCount={{jsx (countSearchableFields entity.fields)}}
+              filterableColumnCount={{jsx (countEnumFields entity.fields)}}
+              cellWidths={[
+                {{#each entity.fields}}
+                "{{getCellWidth name type}}",
+                {{/each}}
+              ]}
+              shrinkZero
+            />
+          }
+        >
+          <{{pascalCase entity.pluralName}}Table promises={promises} />
+        </React.Suspense>
+      </FeatureFlagsProvider>
+    </Shell>
+  )
+}
