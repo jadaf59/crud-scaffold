@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 
 const {{lowercase entity.name}}Schema = z.object({
   {{#each entity.fields}}
@@ -23,8 +24,8 @@ const {{lowercase entity.name}}Schema = z.object({
 export const create{{entity.name}}Schema = {{lowercase entity.name}}Schema
 export const update{{entity.name}}Schema = create{{entity.name}}Schema.partial()
 
-export type Create{{entity.name}} = z.infer<typeof create{{entity.name}}Schema>
-export type Update{{entity.name}} = z.infer<typeof update{{entity.name}}Schema>
+export type Create{{entity.name}}Schema = z.infer<typeof create{{entity.name}}Schema>
+export type Update{{entity.name}}Schema = z.infer<typeof update{{entity.name}}Schema>
 
 // Custom validation messages
 export const {{uppercase entity.name}}_VALIDATION_MESSAGES = {

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { type Table } from "@tanstack/react-table"
 import { Download } from "lucide-react"
 
@@ -12,8 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-import { Delete{{entity.pluralName}}Dialog } from "./{{entity.tableName}}-delete-dialog"
-import { {{entity.name}} } from "@/lib/db/schema/schema"
+import { Delete{{entity.name}}Dialog } from "./delete-{{lowercase entity.name}}-dialog"
 
 interface {{entity.name}}TableToolbarActionsProps {
   table: Table<{{entity.name}}>
@@ -24,8 +24,8 @@ export function {{entity.name}}TableToolbarActions({
 }: {{entity.name}}TableToolbarActionsProps) {
   return (
     <div className="flex items-center gap-2">
-      <Delete{{entity.pluralName}}Dialog
-        {{entity.tableName}}={table.getFilteredSelectedRowModel().rows.map((row) => row.original)}
+      <Delete{{entity.name}}Dialog
+        {{lowercase entity.pluralName}}={table.getFilteredSelectedRowModel().rows.map((row) => row.original)}
       />
       <Tooltip>
         <TooltipTrigger asChild>

@@ -1,26 +1,26 @@
 "use server"
 
-import { revalidateTag, unstable_noStore } from "next/cache"
+import { revalidateTag } from "next/cache"
 import { db } from "@/lib/db/drizzle"
-import { {{entity.tableName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { takeFirstOrThrow } from "@/lib/db/utils"
-import { asc, eq, inArray, not } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { customAlphabet } from "nanoid"
 
 import { getErrorMessage } from "@/lib/handle-error"
 import { 
-  type CreateTaskSchema,
-  type UpdateTaskSchema,
-  createTaskSchema,
-  updateTaskSchema,
+  type Create{{entity.name}}Schema,
+  type Update{{entity.name}}Schema,
+  create{{entity.name}}Schema,
+  update{{entity.name}}Schema,
 } from "./validations"
 
 const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 10)
 
 export async function get{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
   try {
-    const result = await db.query.{{entity.tableName}}.findFirst({
-      where: eq({{entity.tableName}}.id, input.id),
+    const result = await db.query.{{lowercase entity.name}}.findFirst({
+      where: eq({{lowercase entity.name}}.id, input.id),
     })
 
     if (!result) {
@@ -42,12 +42,12 @@ export async function get{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
   }
 }
 
-export async function create{{entity.name}}(input: CreateTaskSchema) {
+export async function create{{entity.name}}(input: Create{{entity.name}}Schema) {
   try {
-    const validatedInput = createTaskSchema.parse(input)
+    const validatedInput = create{{entity.name}}Schema.parse(input)
 
     const result = await db
-      .insert({{entity.tableName}})
+      .insert({{lowercase entity.name}})
       .values({
         id: nanoid(),
         {{#each entity.fields}}
@@ -63,10 +63,10 @@ export async function create{{entity.name}}(input: CreateTaskSchema) {
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{entity.tableName}}")
+    revalidateTag("{{lowercase entity.name}}")
     {{#each entity.fields}}
     {{#if isEnum}}
-    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
     {{/if}}
     {{/each}}
 
@@ -82,22 +82,22 @@ export async function create{{entity.name}}(input: CreateTaskSchema) {
   }
 }
 
-export async function update{{entity.name}}(input: UpdateTaskSchema & { id: {{entity.name}}["id"] }) {
+export async function update{{entity.name}}(input: Update{{entity.name}}Schema & { id: {{entity.name}}["id"] }) {
   try {
-    const validatedInput = updateTaskSchema.parse(input)
+    const validatedInput = update{{entity.name}}Schema.parse(input)
 
     const result = await db
-      .update({{entity.tableName}})
+      .update({{lowercase entity.name}})
       .set(validatedInput)
-      .where(eq({{entity.tableName}}.id, input.id))
+      .where(eq({{lowercase entity.name}}.id, input.id))
       .returning()
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{entity.tableName}}")
+    revalidateTag("{{lowercase entity.name}}")
     {{#each entity.fields}}
     {{#if isEnum}}
-    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
     {{/if}}
     {{/each}}
 
@@ -116,16 +116,16 @@ export async function update{{entity.name}}(input: UpdateTaskSchema & { id: {{en
 export async function delete{{entity.name}}(input: { id: {{entity.name}}["id"] }) {
   try {
     const result = await db
-      .delete({{entity.tableName}})
-      .where(eq({{entity.tableName}}.id, input.id))
+      .delete({{lowercase entity.name}})
+      .where(eq({{lowercase entity.name}}.id, input.id))
       .returning()
 
     const {{lowercase entity.name}} = takeFirstOrThrow(result)
 
-    revalidateTag("{{entity.tableName}}")
+    revalidateTag("{{lowercase entity.name}}")
     {{#each entity.fields}}
     {{#if isEnum}}
-    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
     {{/if}}
     {{/each}}
 
@@ -144,14 +144,14 @@ export async function delete{{entity.name}}(input: { id: {{entity.name}}["id"] }
 export async function delete{{entity.pluralName}}(input: { ids: {{entity.name}}["id"][] }) {
   try {
     const result = await db
-      .delete({{entity.tableName}})
-      .where(inArray({{entity.tableName}}.id, input.ids))
+      .delete({{lowercase entity.name}})
+      .where(inArray({{lowercase entity.name}}.id, input.ids))
       .returning()
 
-    revalidateTag("{{entity.tableName}}")
+    revalidateTag("{{lowercase entity.name}}")
     {{#each entity.fields}}
     {{#if isEnum}}
-    revalidateTag("{{../entity.tableName}}-{{name}}-counts")
+    revalidateTag("{{lowercase ../entity.name}}-{{name}}-counts")
     {{/if}}
     {{/each}}
 

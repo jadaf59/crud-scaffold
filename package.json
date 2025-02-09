@@ -11,7 +11,8 @@
     "build": "rm -rf dist && tsc && npm run copy-templates && chmod +x dist/cli.js",
     "copy-templates": "cp -r src/templates dist/",
     "start": "node dist/cli.js",
-    "dev": "rm -rf dist && npm run build && cd ../test-project && rm -rf src/app && npx crud-scaffold"
+    "dev": "rm -rf dist && npm run build && cd ../test-project && rm -rf src/app && npx crud-scaffold",
+    "dev-mel": "rm -rf dist && npm run build && cd ../mel && npx crud-scaffold -o ./app"
   },
   "keywords": [],
   "author": "",
@@ -23,7 +24,7 @@
     "drizzle-kit": "^0.30.4",
     "drizzle-orm": "^0.29.3",
     "handlebars": "^4.7.8",
-    "inquirer": "^9.2.12",
+    "inquirer": "^9.3.7",
     "lucide-react": "^0.475.0",
     "ora": "^8.0.1",
     "param-case": "^4.0.0",
@@ -32,6 +33,7 @@
     "prettier": "^3.2.4"
   },
   "devDependencies": {
+    "@types/inquirer": "^9.0.7",
     "@types/node": "^20.11.5",
     "@types/prettier": "^3.0.0",
     "typescript": "^5.3.3"

@@ -6,6 +6,7 @@ import ora from "ora"
 import path from "path"
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
+import inquirer from "inquirer"
 import { CRUDGenerator } from './generators/index.js'
 import type { GeneratorConfig } from "./types/index.js"
 import { parseSchema } from './utils/schema.js'
@@ -43,18 +44,6 @@ program
     .name("crud-scaffold")
     .description("Generate CRUD scaffolding for your Next.js application")
     .version("1.0.0")
-
-interface CLIOptions {
-    config?: string;
-    output: string;
-    typescript: boolean;
-    tests: boolean;
-    docs: boolean;
-}
-
-program
-    .name("crud-scaffold")
-    .description("Generate CRUD scaffolding")
     .option("-c, --config <path>", "Path to config file")
     .option("-o, --output <dir>", "Output directory", "./src/app")
     .option("-t, --typescript", "Generate TypeScript files", true)
@@ -62,7 +51,8 @@ program
     .option("--docs", "Generate documentation", false)
     .action(async (options: CLIOptions) => {
         console.log(chalk.blue("Starting CRUD scaffold generation..."));
-        const spinner = ora("Initializing...").start()
+        const spinner = ora("Initializing...").start();
+        
         try {
             console.log(chalk.yellow("Parsing schema file..."));
             const { entities } = await parseSchema();
@@ -73,7 +63,39 @@ program
                 throw new Error("No entities found in schema");
             }
 
-            for (const entity of entities) {
+            spinner.stop();
+
+            const { mode } = await inquirer.prompt([{
+                type: 'list',
+                name: 'mode',
+                message: 'How would you like to generate tables?',
+                choices: ['All Tables', 'Select Tables']
+            }]);
+
+            let selectedEntities = entities;
+            
+            if (mode === 'Select Tables') {
+                const { selected } = await inquirer.prompt([{
+                    type: 'checkbox',
+                    name: 'selected',
+                    message: 'Select tables to generate:',
+                    choices: entities.map(e => ({
+                        name: e.name,
+                        value: e
+                    }))
+                }]);
+                
+                if (!selected || selected.length === 0) {
+                    spinner.fail(chalk.red("No tables selected for generation"));
+                    process.exit(1);
+                }
+                
+                selectedEntities = selected;
+            }
+
+            spinner.start("Generating files...");
+
+            for (const entity of selectedEntities) {
                 console.log(chalk.yellow(`Generating scaffolding for entity: ${entity.name}`));
                 
                 const generatorOptions: GeneratorConfig = {
@@ -109,3 +131,11 @@ program
 
 console.log(chalk.blue("Parsing command line arguments..."));
 program.parse(process.argv)
+
+interface CLIOptions {
+    config?: string;
+    output: string;
+    typescript: boolean;
+    tests: boolean;
+    docs: boolean;
+}

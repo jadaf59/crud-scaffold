@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { Loader, Trash } from "lucide-react"
 import { toast } from "sonner"
 
@@ -28,18 +28,18 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer"
 
-import { delete{{entity.pluralName}} } from "@/app/_lib/{{entity.tableName}}/actions"
+import { delete{{entity.pluralName}} } from "@/app/_lib/{{lowercase entity.pluralName}}/actions"
 
-interface Delete{{entity.pluralName}}DialogProps {
-  {{entity.tableName}}: {{entity.name}}[]
+interface Delete{{entity.name}}DialogProps {
+  {{lowercase entity.pluralName}}: {{entity.name}}[]
   open?: boolean
   onOpenChange?: (open: boolean) => void
   showTrigger?: boolean
   onSuccess?: () => void
 }
 
-export function Delete{{entity.pluralName}}Dialog({
-  {{entity.tableName}},
+export function Delete{{entity.name}}Dialog({
+  {{lowercase entity.pluralName}},
   open,
   onOpenChange,
   showTrigger = true,
@@ -51,7 +51,9 @@ export function Delete{{entity.pluralName}}Dialog({
   function onDelete() {
     startDeleteTransition(async () => {
       try {
-        const result = await delete{{entity.pluralName}}({{entity.tableName}}.map((item) => item.id))
+        const result = await delete{{entity.pluralName}}({
+          ids: {{lowercase entity.pluralName}}.map((item) => item.id)
+        })
 
         if (result.error) {
           toast.error(result.error)
@@ -86,13 +88,9 @@ export function Delete{{entity.pluralName}}Dialog({
           <DialogHeader>
             <DialogTitle>Are you absolutely sure?</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete{" "}
-              {{#if (eq entity.tableName.length 1)}}
-                this {{lowercase entity.name}}
-              {{else}}
-                these {{entity.tableName.length}} {{lowercase entity.pluralName}}
-              {{/if}}{" "}
-              from our servers.
+              This action cannot be undone. This will permanently delete the selected {" "}
+              {{lowercase entity.name}}
+              {" "}from our servers.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -133,16 +131,12 @@ export function Delete{{entity.pluralName}}Dialog({
         <DrawerHeader>
           <DrawerTitle>Are you absolutely sure?</DrawerTitle>
           <DrawerDescription>
-            This action cannot be undone. This will permanently delete{" "}
-            {{#if (eq entity.tableName.length 1)}}
-              this {{lowercase entity.name}}
-            {{else}}
-              these {{entity.tableName.length}} {{lowercase entity.pluralName}}
-            {{/if}}{" "}
-            from our servers.
+            This action cannot be undone. This will permanently delete the selected {" "}
+            {{lowercase entity.name}}
+            {" "}from our servers.
           </DrawerDescription>
         </DrawerHeader>
-        <DrawerFooter className="gap-2 sm:space-x-0">
+        <DrawerFooter className="gap-2 sm:gap-0">
           <DrawerClose asChild>
             <Button variant="outline">Cancel</Button>
           </DrawerClose>

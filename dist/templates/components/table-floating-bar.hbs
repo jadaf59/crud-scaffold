@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { SelectTrigger } from "@radix-ui/react-select"
 import { type Table } from "@tanstack/react-table"
 import {
@@ -30,11 +30,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
+import { update{{entity.name}} } from "@/app/_lib/{{lowercase entity.pluralName}}/actions"
 {{#if entity.hasIcons}}
-import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{lowercase entity.pluralName}}/utils"
 {{/if}}
-import { Delete{{entity.pluralName}}Dialog } from "./{{entity.tableName}}-delete-dialog"
+import { Delete{{entity.name}}Dialog } from "./delete-{{lowercase entity.name}}-dialog"
 
 interface {{entity.name}}TableFloatingBarProps {
   table: Table<{{entity.name}}>
@@ -165,10 +165,10 @@ export function {{entity.name}}TableFloatingBar({
           </div>
         </div>
       </div>
-      <Delete{{entity.pluralName}}Dialog
+      <Delete{{entity.name}}Dialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        {{entity.tableName}}={selectedRows.map((row) => row.original)}
+        {{lowercase entity.pluralName}}={selectedRows.map((row) => row.original)}
         showTrigger={false}
         onSuccess={() => table.toggleAllPageRowsSelected(false)}
       />

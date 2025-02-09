@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { type DataTableRowAction } from "@/types"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Ellipsis } from "lucide-react"
@@ -27,9 +27,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 {{#if entity.hasIcons}}
-import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{lowercase entity.pluralName}}/utils"
 {{/if}}
-import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
+import { update{{entity.name}} } from "@/app/_lib/{{lowercase entity.pluralName}}/actions"
 
 interface GetColumnsProps {
   setRowAction: React.Dispatch<React.SetStateAction<DataTableRowAction<{{entity.name}}> | null>>

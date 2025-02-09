@@ -19,7 +19,7 @@ interface {{entity.name}}TableProviderProps {
   children: React.ReactNode
 }
 
-export function {{entity.name}}TableProvider({
+export function {{entity.pluralName}}TableProvider({
   children,
 }: {{entity.name}}TableProviderProps) {
   const { featureFlags, setFeatureFlags } = useFeatureFlags()

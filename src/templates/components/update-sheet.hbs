@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { {{entity.name}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import { type {{entity.name}} } from "@/lib/db/schema/{{lowercase entity.pluralName}}"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -33,10 +33,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 
-import { update{{entity.name}} } from "@/app/_lib/{{entity.tableName}}/actions"
-import { update{{entity.name}}Schema } from "@/app/_lib/{{entity.tableName}}/validations"
+import { update{{entity.name}} } from "@/app/_lib/{{lowercase entity.pluralName}}/actions"
+import { update{{entity.name}}Schema, type Update{{entity.name}}Schema } from "@/app/_lib/{{lowercase entity.pluralName}}/validations"
 {{#if entity.hasIcons}}
-import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{entity.tableName}}/utils"
+import { {{#each entity.fields}}{{#if isEnum}}get{{pascalCase name}}Icon,{{/if}}{{/each}} } from "@/app/_lib/{{lowercase entity.pluralName}}/utils"
 {{/if}}
 
 interface Update{{entity.name}}SheetProps {
@@ -58,33 +58,23 @@ export function Update{{entity.name}}Sheet({
       id: {{lowercase entity.name}}?.id ?? "",
       {{#each entity.fields}}
       {{#unless (eq name "id")}}
-      {{#unless (eq name "createdAt")}}
+      {{#if (eq type "date")}}
+      {{name}}: {{lowercase ../entity.name}}?.{{name}} ?? undefined,
+      {{else}}
       {{name}}: {{lowercase ../entity.name}}?.{{name}} ?? {{#if (eq type "string")}}""{{else if (eq type "number")}}0{{else if (eq type "boolean")}}false{{else}}""{{/if}},
-      {{/unless}}
+      {{/if}}
       {{/unless}}
       {{/each}}
     },
   })
 
-  React.useEffect(() => {
-    if ({{lowercase entity.name}}) {
-      form.reset({
-        id: {{lowercase entity.name}}.id,
-        {{#each entity.fields}}
-        {{#unless (eq name "id")}}
-        {{#unless (eq name "createdAt")}}
-        {{name}}: {{lowercase ../entity.name}}.{{name}},
-        {{/unless}}
-        {{/unless}}
-        {{/each}}
-      })
-    }
-  }, [{{lowercase entity.name}}, form])
-
   function onSubmit(data: Update{{entity.name}}Schema) {
     startUpdateTransition(async () => {
       try {
-        const result = await update{{entity.name}}(data)
+        const result = await update{{entity.name}}({
+          ...data,
+          id: {{lowercase entity.name}}?.id ?? "",
+        })
 
         if (result.error) {
           toast.error(result.error)
@@ -105,11 +95,14 @@ export function Update{{entity.name}}Sheet({
         <SheetHeader>
           <SheetTitle>Edit {{entity.name}}</SheetTitle>
           <SheetDescription>
-            Make changes to the {{lowercase entity.name}} here. Click save when you're done.
+            Make changes to the {{lowercase entity.name}} here. Click save when you&apos;re done.
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-8">
+          <form
+            className="grid gap-4 py-4"
+            onSubmit={(...args) => void form.handleSubmit(onSubmit)(...args)}
+          >
             {{#each entity.fields}}
             {{#unless (eq name "id")}}
             {{#unless (eq name "createdAt")}}
@@ -130,7 +123,7 @@ export function Update{{entity.name}}Sheet({
                         <SelectValue placeholder="Select {{lowercase name}}" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.values({{../entity.name}}.{{name}}).map((value) => (
+                        {Object.values({{../entity.name}}.{{name}}.enumValues).map((value) => (
                           <SelectItem key={value} value={value}>
                             {{#if ../entity.hasIcons}}
                             {get{{pascalCase name}}Icon(value) && (

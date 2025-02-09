@@ -5,6 +5,7 @@ import ora from "ora";
 import path from "path";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import inquirer from "inquirer";
 import { CRUDGenerator } from './generators/index.js';
 import { parseSchema } from './utils/schema.js';
 // Fix for __dirname in ES modules
@@ -36,10 +37,7 @@ const program = new Command();
 program
     .name("crud-scaffold")
     .description("Generate CRUD scaffolding for your Next.js application")
-    .version("1.0.0");
-program
-    .name("crud-scaffold")
-    .description("Generate CRUD scaffolding")
+    .version("1.0.0")
     .option("-c, --config <path>", "Path to config file")
     .option("-o, --output <dir>", "Output directory", "./src/app")
     .option("-t, --typescript", "Generate TypeScript files", true)
@@ -55,7 +53,32 @@ program
         if (entities.length === 0) {
             throw new Error("No entities found in schema");
         }
-        for (const entity of entities) {
+        spinner.stop();
+        const { mode } = await inquirer.prompt([{
+                type: 'list',
+                name: 'mode',
+                message: 'How would you like to generate tables?',
+                choices: ['All Tables', 'Select Tables']
+            }]);
+        let selectedEntities = entities;
+        if (mode === 'Select Tables') {
+            const { selected } = await inquirer.prompt([{
+                    type: 'checkbox',
+                    name: 'selected',
+                    message: 'Select tables to generate:',
+                    choices: entities.map(e => ({
+                        name: e.name,
+                        value: e
+                    }))
+                }]);
+            if (!selected || selected.length === 0) {
+                spinner.fail(chalk.red("No tables selected for generation"));
+                process.exit(1);
+            }
+            selectedEntities = selected;
+        }
+        spinner.start("Generating files...");
+        for (const entity of selectedEntities) {
             console.log(chalk.yellow(`Generating scaffolding for entity: ${entity.name}`));
             const generatorOptions = {
                 outputDir: options.output,

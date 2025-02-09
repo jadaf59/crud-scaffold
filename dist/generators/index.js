@@ -1,7 +1,6 @@
 import path from "path";
 import { promises as fs } from "fs";
 import Handlebars from "handlebars";
-import prettier from "prettier";
 export class CRUDGenerator {
     constructor(config) {
         this.config = config;
@@ -20,25 +19,6 @@ export class CRUDGenerator {
             return arg1 === arg2;
         });
         // Add more helpers as needed
-    }
-    async loadTemplate(name) {
-        const templatePath = path.join(this.config.templatesDir, `${name}.hbs`);
-        const template = await fs.readFile(templatePath, "utf-8");
-        return Handlebars.compile(template);
-    }
-    async formatFile(content, parser) {
-        try {
-            return prettier.format(content, {
-                parser,
-                semi: false,
-                singleQuote: true,
-                trailingComma: "es5",
-            });
-        }
-        catch (error) {
-            console.warn("Prettier formatting failed:", error);
-            return content;
-        }
     }
     async generateFile(templateName, outputPath) {
         try {
@@ -65,17 +45,6 @@ export class CRUDGenerator {
             throw error;
         }
     }
-    async validateTemplate(templateName) {
-        try {
-            const templatePath = path.join(this.config.templatesDir, `${templateName}.hbs`);
-            await fs.access(templatePath);
-            return true;
-        }
-        catch {
-            console.error(`Template ${templateName} not found`);
-            return false;
-        }
-    }
     async generateLibFiles() {
         // Update template paths to match directory structure
         await this.generateFile('lib/actions', path.join(this.config.outputDir, `_lib/${this.config.entity.tableName}/actions.ts`));
@@ -89,15 +58,18 @@ export class CRUDGenerator {
             await this.config.hooks?.beforeGenerate?.();
             // Generate lib files
             await this.generateLibFiles();
-            // Generate component files
+            // Generate component files with updated paths
             const componentsDir = path.join(this.config.outputDir, `_components/${this.config.entity.tableName}`);
-            await this.generateFile("components/table", path.join(componentsDir, "table.tsx"));
-            await this.generateFile("components/table-columns", path.join(componentsDir, "table-columns.tsx"));
-            await this.generateFile("components/table-toolbar-actions", path.join(componentsDir, "table-toolbar-actions.tsx"));
-            await this.generateFile("components/table-floating-bar", path.join(componentsDir, "table-floating-bar.tsx"));
-            await this.generateFile("components/update-sheet", path.join(componentsDir, "update-sheet.tsx"));
-            await this.generateFile("components/delete-dialog", path.join(componentsDir, "delete-dialog.tsx"));
-            await this.generateFile("components/feature-flags", path.join(componentsDir, "feature-flags.tsx"));
+            // Generate feature flags provider as a shared component
+            await this.generateFile("components/feature-flags-provider", path.join(componentsDir, "feature-flags-provider.tsx"));
+            // Generate entity-specific components
+            await this.generateFile("components/table", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table.tsx`));
+            await this.generateFile("components/table-columns", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table-columns.tsx`));
+            await this.generateFile("components/table-toolbar-actions", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table-toolbar-actions.tsx`));
+            await this.generateFile("components/table-floating-bar", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-table-floating-bar.tsx`));
+            await this.generateFile("components/update-sheet", path.join(componentsDir, `update-${this.config.entity.name.toLowerCase()}-sheet.tsx`));
+            await this.generateFile("components/delete-dialog", path.join(componentsDir, `delete-${this.config.entity.name.toLowerCase()}-dialog.tsx`));
+            await this.generateFile("components/feature-flags", path.join(componentsDir, `${this.config.entity.pluralName.toLowerCase()}-feature-flags.tsx`));
             if (this.config.options?.tests) {
                 // Generate test files
                 const testsDir = path.join(this.config.outputDir, `__tests__/${this.config.entity.tableName}`);

@@ -1,34 +1,134 @@
-import { unstable_noStore as noStore } from "next/cache"
-import { db } from "@/lib/db"
-import { {{entity.tableName}} } from "@/lib/db/schema"
-import { and, asc, desc, eq, like, or } from "drizzle-orm"
+import "server-only"
 
-export async function get{{entity.pluralName}}() {
-  noStore();
-  return await db.select().from({{entity.tableName}});
+import { {{lowercase entity.pluralName}}, type {{entity.name}} } from "@/lib/db/schema/schema"
+import {
+  and,
+  asc,
+  count,
+  desc,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  lte,
+} from "drizzle-orm"
+
+import { filterColumns } from "@/lib/filter-columns"
+import { unstable_cache } from "@/lib/unstable-cache"
+import { db } from "@/lib/db/drizzle"
+
+import { type Get{{entity.pluralName}}Schema } from "./validations"
+
+export async function get{{entity.pluralName}}(input: Get{{entity.pluralName}}Schema) {
+  return await unstable_cache(
+    async () => {
+      try {
+        const offset = (input.page - 1) * input.perPage
+        const fromDate = input.from ? new Date(input.from) : undefined
+        const toDate = input.to ? new Date(input.to) : undefined
+        const advancedTable = input.flags.includes("advancedTable")
+
+        const advancedWhere = filterColumns({
+          table: {{lowercase entity.pluralName}},
+          filters: input.filters,
+          joinOperator: input.joinOperator,
+        })
+
+        const where = advancedTable
+          ? advancedWhere
+          : and(
+              {{#each entity.fields}}
+              {{#if isSearchable}}
+              {{#if isEnum}}
+              input.{{name}}.length > 0
+                ? inArray({{lowercase ../entity.pluralName}}.{{name}}, input.{{name}})
+                : undefined,
+              {{else}}
+              input.{{name}} ? ilike({{lowercase ../entity.pluralName}}.{{name}}, "%".concat(input.{{name}}, "%")) : undefined,
+              {{/if}}
+              {{/if}}
+              {{/each}}
+              fromDate ? gte({{lowercase entity.pluralName}}.createdAt, fromDate) : undefined,
+              toDate ? lte({{lowercase entity.pluralName}}.createdAt, toDate) : undefined
+            )
+
+        const orderBy =
+          input.sort.length > 0
+            ? input.sort.map((item) =>
+                item.desc ? desc({{lowercase entity.pluralName}}[item.id]) : asc({{lowercase entity.pluralName}}[item.id])
+              )
+            : [asc({{lowercase entity.pluralName}}.createdAt)]
+
+        const { data, total } = await db.transaction(async (tx) => {
+          const data = await tx
+            .select()
+            .from({{lowercase entity.pluralName}})
+            .limit(input.perPage)
+            .offset(offset)
+            .where(where)
+            .orderBy(...orderBy)
+
+          const total = await tx
+            .select({
+              count: count(),
+            })
+            .from({{lowercase entity.pluralName}})
+            .where(where)
+            .execute()
+            .then((res) => res[0]?.count ?? 0)
+
+          return {
+            data,
+            total,
+          }
+        })
+
+        const pageCount = Math.ceil(total / input.perPage)
+        return { data, pageCount }
+      } catch (err) {
+        return { data: [], pageCount: 0 }
+      }
+    },
+    [JSON.stringify(input)],
+    {
+      revalidate: 3600,
+      tags: ["{{lowercase entity.pluralName}}"],
+    }
+  )()
 }
 
-export async function get{{entity.name}}ById(id: number) {
-  noStore();
-  const [result] = await db.select()
-    .from({{entity.tableName}})
-    .where(eq({{entity.tableName}}.id, id))
-    .limit(1);
-  
-  return result;
+{{#each entity.fields}}
+{{#if isEnum}}
+export async function get{{pascalCase ../entity.name}}{{pascalCase name}}Counts() {
+  return unstable_cache(
+    async () => {
+      try {
+        return await db
+          .select({
+            {{name}}: {{lowercase ../entity.pluralName}}.{{name}},
+            count: count(),
+          })
+          .from({{lowercase ../entity.pluralName}})
+          .groupBy({{lowercase ../entity.pluralName}}.{{name}})
+          .having(gt(count(), 0))
+          .then((res) =>
+            res.reduce(
+              (acc, { {{name}}, count }) => {
+                acc[{{name}}] = count
+                return acc
+              },
+              {} as Record<{{../entity.name}}["{{name}}"], number>
+            )
+          )
+      } catch (err) {
+        return {} as Record<{{../entity.name}}["{{name}}"], number>
+      }
+    },
+    ["{{lowercase ../entity.name}}-{{name}}-counts"],
+    {
+      revalidate: 3600,
+    }
+  )()
 }
-
-export async function search{{entity.pluralName}}(searchTerm: string) {
-  noStore();
-  return await db.select()
-    .from({{entity.tableName}})
-    .where(
-      or(
-        {{#each entity.fields}}
-        {{#if isSearchable}}
-        like({{../entity.tableName}}.{{name}}, `%${searchTerm}%`),
-        {{/if}}
-        {{/each}}
-      )
-    );
-}
+{{/if}}
+{{/each}}

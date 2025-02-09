@@ -9,21 +9,21 @@ import { GeneratorOptions, EntityConfig } from '../types/index.js';
 
 export async function generateComponents(options: GeneratorOptions) {
   const { entity, outputDir, force } = options;
-  const componentDir = path.join(outputDir, '_components', entity.tableName);
+  const componentDir = path.join(outputDir, '_components', entity.pluralName);
 
   // Create component directory
   await fs.mkdir(componentDir, { recursive: true });
 
-  // Generate all components
+  // Generate all components with new naming convention
   await Promise.all([
-    generateComponent('delete-dialog', entity, componentDir, force),
-    generateComponent('feature-flags-provider', entity, componentDir, force),
-    generateComponent('feature-flags', entity, componentDir, force),
-    generateComponent('table', entity, componentDir, force),
-    generateComponent('table-columns', entity, componentDir, force),
-    generateComponent('table-floating-bar', entity, componentDir, force),
-    generateComponent('table-toolbar-actions', entity, componentDir, force),
-    generateComponent('update-sheet', entity, componentDir, force),
+    generateComponent('delete-{{lowercase entity.name}}-dialog', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-feature-flags-provider', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-feature-flags', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-table', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-table-columns', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-table-floating-bar', entity, componentDir, force),
+    generateComponent('{{lowercase entity.pluralName}}-table-toolbar', entity, componentDir, force),
+    generateComponent('update-{{lowercase entity.name}}-sheet', entity, componentDir, force),
   ]);
 }
 

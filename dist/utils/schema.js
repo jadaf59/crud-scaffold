@@ -74,39 +74,47 @@ export async function parseSchema() {
         const schemaContent = await fs.readFile(schemaFile, 'utf-8');
         const sourceFile = ts.createSourceFile(path.basename(schemaFile), schemaContent, ts.ScriptTarget.Latest, true);
         function visit(node) {
-            if (ts.isVariableStatement(node)) {
-                const declaration = node.declarationList.declarations[0];
-                if (ts.isIdentifier(declaration.name)) {
-                    const tableName = declaration.name.text;
-                    const initializer = declaration.initializer?.getText() || '';
-                    if (initializer.includes('pgTable(')) {
-                        console.log(`Found table: ${tableName}`);
-                        const entityName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+            // Look for type declarations like: export type Company = InferSelectModel<typeof companies>;
+            if (ts.isTypeAliasDeclaration(node) &&
+                node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+                const entityName = node.name.text;
+                // Only process types that are InferSelectModel types
+                if (node.type.getText().includes('InferSelectModel')) {
+                    const tableName = node.type.getText().match(/typeof\s+(\w+)/)?.[1] ?? '';
+                    if (tableName) {
+                        console.log(`Found entity: ${entityName} for table: ${tableName}`);
                         const fields = [];
                         // Parse fields from the table definition
-                        if (declaration.initializer && ts.isCallExpression(declaration.initializer)) {
-                            const tableConfig = declaration.initializer.arguments[1];
-                            if (ts.isObjectLiteralExpression(tableConfig)) {
-                                tableConfig.properties.forEach(prop => {
-                                    if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
-                                        const fieldName = prop.name.text;
-                                        const fieldType = prop.initializer.getText();
-                                        fields.push({
-                                            name: fieldName,
-                                            type: inferFieldType(fieldType),
-                                            isRequired: !fieldType.includes('undefined'),
-                                            isSearchable: fieldType.includes('varchar') || fieldType.includes('text'),
-                                            isSortable: true,
-                                            isFilterable: true
+                        // Find the table definition in the same file
+                        sourceFile.forEachChild(tableNode => {
+                            if (ts.isVariableStatement(tableNode) &&
+                                tableNode.declarationList.declarations[0].name.getText() === tableName) {
+                                const declaration = tableNode.declarationList.declarations[0];
+                                if (declaration.initializer && ts.isCallExpression(declaration.initializer)) {
+                                    const tableConfig = declaration.initializer.arguments[1];
+                                    if (ts.isObjectLiteralExpression(tableConfig)) {
+                                        tableConfig.properties.forEach(prop => {
+                                            if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
+                                                const fieldName = prop.name.text;
+                                                const fieldType = prop.initializer.getText();
+                                                fields.push({
+                                                    name: fieldName,
+                                                    type: inferFieldType(fieldType),
+                                                    isRequired: !fieldType.includes('undefined'),
+                                                    isSearchable: fieldType.includes('varchar') || fieldType.includes('text'),
+                                                    isSortable: true,
+                                                    isFilterable: true
+                                                });
+                                            }
                                         });
                                     }
-                                });
+                                }
                             }
-                        }
+                        });
                         entities.push({
-                            name: entityName,
-                            pluralName: getPlural(entityName),
-                            tableName,
+                            name: entityName, // This is now the singular form (e.g., "Company")
+                            pluralName: tableName, // This is the plural form (e.g., "companies")
+                            tableName, // Keep the table name as is
                             fields,
                             enums: {}
                         });
